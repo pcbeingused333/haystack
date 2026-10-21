@@ -1,6 +1,8 @@
 ---
 fixes:
   - |
-    Fixed `InMemoryDocumentStore` raising a numpy `UFuncTypeError` when `embedding_retrieval` used the `cosine` similarity
-    on Documents whose embeddings are integers, for example quantized (int8) embeddings. The normalization divided the
-    integer arrays in place by the float norm. Query and Document embeddings are now converted to floats first.
+    Fixed `InMemoryDocumentStore` failing on integer embeddings, such as the int8 or uint8 embeddings that
+    `CohereDocumentEmbedder` and `CohereTextEmbedder` return with `embedding_type=EmbeddingTypes.INT8`. `embedding_retrieval`
+    with the `cosine` similarity raised a numpy `UFuncTypeError` for integer Document embeddings, because the
+    normalization divided the integer arrays in place by the float norm, and it rejected an integer query embedding.
+    Embeddings are now converted to floats first and the query embedding can be a list of integers.

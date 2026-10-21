@@ -859,8 +859,13 @@ class InMemoryDocumentStore:
         :returns: A list of the top_k documents most relevant to the query.
         :raises ValueError: if filters have invalid syntax.
         """
-        if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
-            raise ValueError("query_embedding should be a non-empty list of floats.")
+        # Quantized embeddings (e.g. Cohere int8) are lists of ints, which are as valid as floats here.
+        if (
+            len(query_embedding) == 0
+            or isinstance(query_embedding[0], bool)
+            or not isinstance(query_embedding[0], (int, float))
+        ):
+            raise ValueError("query_embedding should be a non-empty list of floats or integers.")
 
         if filters:
             InMemoryDocumentStore._validate_filters(filters)

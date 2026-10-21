@@ -493,15 +493,34 @@ class TestMemoryDocumentStore(
         assert results[0].content == "Haystack supports multiple languages"
 
     def test_embedding_retrieval_with_integer_embeddings(self):
-        # Quantized embeddings (e.g. int8) are whole numbers; cosine normalization must not fail on them.
+        # Quantized embeddings (e.g. Cohere's int8) are whole numbers for both the Documents and the query.
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        docstore.write_documents(
+            [Document(content="a", embedding=[1, 0, 0]), Document(content="b", embedding=[1, 1, 0])]
+        )
+        results = docstore.embedding_retrieval(query_embedding=[1, 0, 0], top_k=2)
+        assert [doc.content for doc in results] == ["a", "b"]
+        assert results[0].score == pytest.approx(1.0)
+        assert results[1].score == pytest.approx(1 / math.sqrt(2))
+
+    def test_embedding_retrieval_with_integer_documents_and_float_query(self):
         docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
         docstore.write_documents(
             [Document(content="a", embedding=[1, 0, 0]), Document(content="b", embedding=[1, 1, 0])]
         )
         results = docstore.embedding_retrieval(query_embedding=[1.0, 0.0, 0.0], top_k=2)
         assert [doc.content for doc in results] == ["a", "b"]
-        assert results[0].score == pytest.approx(1.0)
-        assert results[1].score == pytest.approx(1 / math.sqrt(2))
+
+    def test_embedding_retriever_with_integer_embeddings(self):
+        from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        docstore.write_documents(
+            [Document(content="a", embedding=[127, -3, 0]), Document(content="b", embedding=[-5, 90, 12])]
+        )
+        retriever = InMemoryEmbeddingRetriever(document_store=docstore, top_k=1)
+        result = retriever.run(query_embedding=[120, -2, 1])
+        assert [doc.content for doc in result["documents"]] == ["a"]
 
     def test_embedding_retrieval_with_zero_vector_does_not_produce_nan(self):
         # A zero embedding has no direction; normalizing it must not divide by zero and
@@ -520,6 +539,8 @@ class TestMemoryDocumentStore(
             in_memory_doc_store.embedding_retrieval(query_embedding=[])
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
             in_memory_doc_store.embedding_retrieval(query_embedding=["invalid", "list", "of", "strings"])
+        with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
+            in_memory_doc_store.embedding_retrieval(query_embedding=[True, False])
 
     def test_embedding_retrieval_no_embeddings(self, in_memory_doc_store, caplog):
         caplog.set_level(logging.WARNING)
