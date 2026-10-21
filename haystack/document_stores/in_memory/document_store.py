@@ -917,12 +917,13 @@ class InMemoryDocumentStore:
         :returns: A list of scores.
         """
 
-        query_embedding = np.array(embedding)
+        # Cast to float so the in-place normalization below also works for integer embeddings
+        query_embedding = np.asarray(embedding, dtype=float)
         if query_embedding.ndim == 1:
             query_embedding = np.expand_dims(a=query_embedding, axis=0)
 
         try:
-            document_embeddings = np.array([doc.embedding for doc in documents])
+            document_embeddings = np.array([doc.embedding for doc in documents], dtype=float)
         except ValueError as e:
             if "inhomogeneous shape" in str(e):
                 raise DocumentStoreError(

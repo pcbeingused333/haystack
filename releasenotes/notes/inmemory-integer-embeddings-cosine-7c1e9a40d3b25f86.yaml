@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed `InMemoryDocumentStore` raising a numpy `UFuncTypeError` when `embedding_retrieval` used the `cosine` similarity
+    on Documents whose embeddings are integers, for example quantized (int8) embeddings. The normalization divided the
+    integer arrays in place by the float norm. Query and Document embeddings are now converted to floats first.

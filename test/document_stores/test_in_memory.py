@@ -492,6 +492,17 @@ class TestMemoryDocumentStore(
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
 
+    def test_embedding_retrieval_with_integer_embeddings(self):
+        # Quantized embeddings (e.g. int8) are whole numbers; cosine normalization must not fail on them.
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        docstore.write_documents(
+            [Document(content="a", embedding=[1, 0, 0]), Document(content="b", embedding=[1, 1, 0])]
+        )
+        results = docstore.embedding_retrieval(query_embedding=[1.0, 0.0, 0.0], top_k=2)
+        assert [doc.content for doc in results] == ["a", "b"]
+        assert results[0].score == pytest.approx(1.0)
+        assert results[1].score == pytest.approx(1 / math.sqrt(2))
+
     def test_embedding_retrieval_with_zero_vector_does_not_produce_nan(self):
         # A zero embedding has no direction; normalizing it must not divide by zero and
         # produce NaN cosine scores, which would silently corrupt ranking.
