@@ -114,8 +114,9 @@ class DocumentToImageContent:
             Dictionary containing one key:
             - "image_contents": ImageContents created from the processed documents. These contain base64-encoded image
                 data and metadata. The order corresponds to the order of the input documents. A document that is
-                missing the required metadata keys, has an invalid file path, has an unsupported MIME type, or points
-                to a PDF page that cannot be converted gets None in its position and a logged warning with the reason.
+                missing the required metadata keys, has an invalid file path, has an unsupported MIME type, points
+                to an image that cannot be read or decoded, or points to a PDF page that cannot be converted gets None
+                in its position and a logged warning with the reason.
         """
         if not documents:
             return {"image_contents": []}
@@ -147,8 +148,14 @@ class DocumentToImageContent:
                 pdf_page_infos.append(pdf_page_info)
             else:
                 # Process images directly
-                bytestream = ByteStream.from_file_path(filepath=path, mime_type=mime_type)
-                _, base64_image = _encode_image_to_base64(bytestream=bytestream, size=self.size)
+                try:
+                    bytestream = ByteStream.from_file_path(filepath=path, mime_type=mime_type)
+                    _, base64_image = _encode_image_to_base64(bytestream=bytestream, size=self.size)
+                except Exception as error:
+                    logger.warning(
+                        "Could not convert image {path}. Skipping it. Error: {error}", path=path, error=error
+                    )
+                    continue
                 image_contents[doc_idx] = ImageContent(
                     base64_image=base64_image,
                     mime_type=mime_type,

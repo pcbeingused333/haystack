@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``DocumentToImageContent`` no longer fails the whole batch when an image file cannot be read or decoded, for
+    example a corrupt file when ``size`` is set. The document gets ``None`` in its position and a warning names the
+    file, as already happens for invalid metadata, unsupported MIME types and unconvertible PDF pages.

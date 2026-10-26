@@ -116,6 +116,21 @@ class TestDocumentToImageContent:
         assert f"Page 99 is out of range for the PDF file {Path('test/test_files/pdf/sample_pdf_1.pdf')}" in caplog.text
         assert f"Could not read PDF file {unreadable_pdf}" in caplog.text
 
+    def test_run_with_undecodable_image(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+        corrupt_image = tmp_path / "corrupt.jpg"
+        corrupt_image.write_bytes(b"not an image")
+        converter = DocumentToImageContent(size=(64, 64))
+        documents = [
+            Document(content="", meta={"file_path": "test/test_files/images/apple.jpg"}),
+            Document(content="", meta={"file_path": str(corrupt_image)}),
+            Document(content="", meta={"file_path": "test/test_files/images/haystack-logo.png"}),
+        ]
+        image_contents = converter.run(documents=documents)["image_contents"]
+        assert image_contents[0] is not None
+        assert image_contents[1] is None
+        assert image_contents[2] is not None
+        assert f"Could not convert image {corrupt_image}" in caplog.text
+
     @patch("haystack.components.converters.image.document_to_image._extract_image_sources_info")
     @patch("haystack.components.converters.image.document_to_image._batch_convert_pdf_pages_to_images")
     @patch("PIL.Image.open")
